@@ -4,6 +4,18 @@
 .packages
 .pub/
 
+android/.classpath
+android/.project
+android/.settings/
+example/android/.project
+example/android/.settings/
+example/android/app/.classpath
+example/android/app/.project
+example/android/app/.settings/
+example/ios/Podfile.lock
+example/ios/Runner.xcworkspace/xcshareddata/
+
+
 build/
 .idea
 .idea/*
