@@ -14,13 +14,17 @@ class AudioPlayer {
   Duration _audioLength;
   Duration _position;
   bool _isChangingItem;
-  bool _queueInitialized;
+  bool _queueInitialized = false;
   List<AudioPlayerItem> playerItems;
+  int currentIndex = 0;
+  bool invokeListeners = true;
 
   AudioPlayer({
     this.channel,
   }) {
     
+    _log.fine('AudioPlayer init');
+
     _setState(AudioPlayerState.idle);
 
     channel.setMethodCallHandler((MethodCall call) {
@@ -36,8 +40,10 @@ class AudioPlayer {
 
           _setState(AudioPlayerState.loading);
 
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onAudioLoading();
+          if(invokeListeners){
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onAudioLoading();
+            }
           }
           break;
         case "onBufferingUpdate":
@@ -52,9 +58,10 @@ class AudioPlayer {
 
           // When audio is ready then the playhead is at zero.
           _setPosition(const Duration(milliseconds: 0));
-
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onAudioReady();
+          if(invokeListeners){
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onAudioReady();
+            }
           }
           break;
         case "onPlayerPlaying":
@@ -62,8 +69,10 @@ class AudioPlayer {
 
           _setState(AudioPlayerState.playing);
 
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPlayerPlaying();
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPlayerPlaying();
+            }
           }
           break;
         case "onPlayerPlaybackUpdate":
@@ -76,8 +85,10 @@ class AudioPlayer {
 
           _setState(AudioPlayerState.paused);
 
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPlayerPaused();
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPlayerPaused();
+            }
           }
           break;
         case "onPlayerStopped":
@@ -88,8 +99,10 @@ class AudioPlayer {
 
           _setState(AudioPlayerState.stopped);
 
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPlayerStopped();
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPlayerStopped();
+            }
           }
           break;
         case "onPlayerCompleted":
@@ -97,8 +110,10 @@ class AudioPlayer {
 
           _setState(AudioPlayerState.completed);
 
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPlayerCompleted();
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPlayerCompleted();
+            }
           }
           break;
         case "onSeekStarted":
@@ -107,38 +122,50 @@ class AudioPlayer {
         case "onSeekCompleted":
           _log.fine('plugin: onSeekCompleted, position: ${call.arguments['position']}');
           _setPosition(new Duration(seconds: call.arguments['position']));
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onSeekCompleted(call.arguments['position']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onSeekCompleted(call.arguments['position']);
+            }
           }
           break;
         case "onNextStarted":
           _log.fine('plugin: onNextStarted, index: ${call.arguments['index']}');
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onNextStarted(call.arguments['index']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onNextStarted(call.arguments['index']);
+            }
           }
           break;
         case "onNextCompleted":
           _log.fine('plugin: onNextCompleted, index: ${call.arguments['index']}');
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onNextCompleted(call.arguments['index']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onNextCompleted(call.arguments['index']);
+            }
           }
           break;
         case "onPreviousStarted":
           _log.fine('plugin: onPreviousStarted, index: ${call.arguments['index']}');
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPreviousStarted(call.arguments['index']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPreviousStarted(call.arguments['index']);
+            }
           }
           break;
         case "onPreviousCompleted":
           _log.fine('plugin: onPreviousCompleted, index: ${call.arguments['index']}');
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onPreviousCompleted(call.arguments['index']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onPreviousCompleted(call.arguments['index']);
+            }
           }
           break;
         case "onIndexChangedExternally":
           _log.fine('plugin: onIndexChangedExternally, index: ${call.arguments['index']}');
-          for (AudioPlayerListener listener in _listeners) {
-            listener.onIndexChangedExternally(call.arguments['index']);
+          if(invokeListeners) {
+            for (AudioPlayerListener listener in _listeners) {
+              listener.onIndexChangedExternally(call.arguments['index']);
+            }
           }
           break;
       }
@@ -154,10 +181,10 @@ class AudioPlayer {
 
   _setState(AudioPlayerState state) {
     _state = state;
-    _queueInitialized = false;
-
-    for (AudioPlayerListener listener in _listeners) {
-      listener.onAudioStateChanged(state);
+    if(invokeListeners) {
+      for (AudioPlayerListener listener in _listeners) {
+        listener.onAudioStateChanged(state);
+      }
     }
   }
 
@@ -176,8 +203,10 @@ class AudioPlayer {
   _setAudioLength(Duration audioLength) {
     _audioLength = audioLength;
 
-    for (AudioPlayerListener listener in _listeners) {
-      listener.onAudioLengthChanged(_audioLength);
+    if(invokeListeners) {
+      for (AudioPlayerListener listener in _listeners) {
+        listener.onAudioLengthChanged(_audioLength);
+      }
     }
   }
 
@@ -190,8 +219,10 @@ class AudioPlayer {
   _setPosition(Duration position) {
     _position = position;
 
-    for (AudioPlayerListener listener in _listeners) {
-      listener.onPlayerPositionChanged(position);
+    if(invokeListeners) {
+      for (AudioPlayerListener listener in _listeners) {
+        listener.onPlayerPositionChanged(position);
+      }
     }
   }
 
@@ -201,6 +232,14 @@ class AudioPlayer {
 
   void removeListener(AudioPlayerListener listener) {
     _listeners.remove(listener);
+  }
+
+  Future<void> removeAllListeners() async {
+    invokeListeners = false;
+    _log.fine("removing all listeners");
+    _listeners.clear();
+    _log.fine("_listeners ${_listeners}");
+    invokeListeners = true;
   }
 
   Future<void> initPlayerQueue(List<AudioPlayerItem> newItems) async {
@@ -222,11 +261,13 @@ class AudioPlayer {
       'setIndex',
       {'index': index},
     );
+    currentIndex = index;
   }
 
   void play() {
     _log.fine('play()');
     channel.invokeMethod('play');
+
   }
 
   void next() {
@@ -249,7 +290,7 @@ class AudioPlayer {
     channel.invokeMethod(
       'seek',
       {
-        'seekPosition': duration.inMilliseconds,
+        'seekPosition': duration.inSeconds,
       },
     );
   }
@@ -420,27 +461,33 @@ enum AudioPlayerState {
 }
 
 class AudioPlayerItem{
+  String id;
   String url;
   String thumbUrl;
   String title;
   Duration duration;
   String album;
+  bool local;
 
   AudioPlayerItem({
+    this.id,
     this.url,
     this.thumbUrl,
     this.title,
     this.duration,
-    this.album
+    this.album,
+    this.local
   });
 
   Map<String, dynamic> toMap(){
     return {
+      'id': this.id,
       'url': this.url,
       'thumb': this.thumbUrl,
       'title': this.title,
       'duration': this.duration.inSeconds,
-      'album': this.album
+      'album': this.album,
+      'local': this.local
     };
   }
 

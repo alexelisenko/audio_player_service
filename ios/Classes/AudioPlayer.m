@@ -30,6 +30,15 @@
     NSMutableSet* _listeners;
 }
 
++ (id)sharedManager {
+    static AudioPlayer *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[self alloc] init];
+    });
+    return instance;
+}
+
 -  (instancetype)init {
     if (self = [super init]) {
         
@@ -92,19 +101,68 @@
 
 - (void)deinit {
     [_player removeTimeObserver:_periodicListener];
+    [_player removeObserver:self forKeyPath:@"status"];
+    [_player removeObserver:self forKeyPath:@"rate"];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+}
+
+- (void) deinitPlayerQueue{
+
+    @try {
+        
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+        [_player replaceCurrentItemWithPlayerItem:nil];
+        [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
+
+        [_player removeTimeObserver:_periodicListener];
+        
+        [_player removeObserver:self forKeyPath:@"status"];
+        [_player removeObserver:self forKeyPath:@"rate"];
+
+        [_player removeAllItems];
+        _player = nil;
+        
+    }
+    @catch (NSException * e) {
+        NSLog(@"deinitPlayerQueue Exception: %@", e);
+    }
+    @finally {
+    }
+
 }
 
 - (void) initPlayerQueue: (NSArray*)items{
     
+    [self deinitPlayerQueue];
+
     _items = items;
     
     //set player items, we only need the URL
     for (NSDictionary* item in _items) {
         
+        AVPlayerItem* playerItem;
+
         NSURL *url = [[NSURL alloc] initWithString: [item objectForKey:@"url"]];
-        AVPlayerItem* playerItem = [[AVPlayerItem alloc] initWithURL:url];
+        NSLog(@"initPlayerqueue local: %@", [item objectForKey:@"local"]);
+        if([item objectForKey:@"local"]){
+            
+            AVAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+            playerItem = [AVPlayerItem playerItemWithAsset:asset];
+
+        }else{
+
+            playerItem = [[AVPlayerItem alloc] initWithURL:url];
+
+        }
+
         [_playerItems addObject:playerItem];
+
+        //edit thumbs right away
+        NSString* itemThumb = [item objectForKey:@"thumb"];
+        NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
+        NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
+        UIImage *artwork = [[UIImage alloc] initWithData:data];
+        [item setValue:[self resizeImageWithImage:artwork scaledToSize:CGSizeMake(600, 600)] forKey:@"thumb_image"];
         
     }
     
@@ -165,18 +223,20 @@
     
     NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
     NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
-    //NSNumber* itemDuration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
     
-    NSString* itemThumb = [[_items objectAtIndex:itemIndex] objectForKey:@"thumb"];
-    NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
-    NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
-    UIImage *artwork = [[UIImage alloc] initWithData:data];
     MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-        return [self resizeImageWithImage:artwork scaledToSize:size];
+        return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
     }];
     
     NSLog(@"playing file: %@", [[_items objectAtIndex:itemIndex] objectForKey:@"url"]);
     
+    // AVPlayerItem *currentItem = [_player currentItem];
+    // NSUInteger currentIndex = [[queuePlayer items] indexOfObject:currentItem];
+    // for (;currentIndex<indexToPlay; currentIndex++)
+    // {
+    // [queuePlayer advanceToNextItem];
+    // }
+
     [_player removeAllItems];
     for (int i = itemIndex; i <_items.count; i ++) {
         if ([_player canInsertItem:item afterItem:nil]) {
@@ -185,15 +245,10 @@
         }
     }
     
-    NSNumber* duration = [NSNumber numberWithLong:[self audioLength]/1000];
-    
-    if([duration intValue] == 0){
-        duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
-    }
+    NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
     
     [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                                                              itemTitle, MPMediaItemPropertyTitle,
-                                                             //@"some Artist", MPMediaItemPropertyArtist,
                                                              ControlArtwork, MPMediaItemPropertyArtwork,
                                                              itemAlbum, MPMediaItemPropertyAlbumTitle,
                                                              duration, MPMediaItemPropertyPlaybackDuration,
@@ -215,9 +270,9 @@
 }
 
 - (long) audioLength {
-    if (_player.currentItem != nil && _player.currentItem.duration.value > 0) {
-        CMTime time = [_player.currentItem duration];
-        long millis = CMTimeGetSeconds(time) * 1000;
+    if (_player.currentItem != nil) {
+        NSNumber* duration = [[_items objectAtIndex:_itemIndex] objectForKey:@"duration"];
+        long millis = [duration intValue] * 1000;
         return millis;
     } else {
         return 0;
@@ -242,14 +297,28 @@
 
 - (void) setPlaybackStatusInfo{
     
-NSMutableDictionary *nowPlayingInfo = [[MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo mutableCopy];
+    int itemIndex = (int) _itemIndex;
     
+    NSLog(@"initPlayerItem item: %@", [_items objectAtIndex:itemIndex]);
+    
+    NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
+    NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+    
+    MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+        return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+    }];
+
+    NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+    
+    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                                             itemTitle, MPMediaItemPropertyTitle,
+                                                             ControlArtwork, MPMediaItemPropertyArtwork,
+                                                             itemAlbum, MPMediaItemPropertyAlbumTitle,
+                                                             duration, MPMediaItemPropertyPlaybackDuration,
+                                                             _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime, 
+                                                             _player.rate, MPNowPlayingInfoPropertyPlaybackRate, nil];
+
     NSLog(@"setPlaybackStatusInfo: position %@", _playerPosition);
-    
-    [nowPlayingInfo setObject:[NSNumber numberWithDouble:_player.rate] forKey:MPNowPlayingInfoPropertyPlaybackRate];
-    [nowPlayingInfo setObject:_playerPosition forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
-    
-    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nowPlayingInfo;
     
 }
 
@@ -337,8 +406,9 @@ NSMutableDictionary *nowPlayingInfo = [[MPNowPlayingInfoCenter defaultCenter].no
 }
 
 - (void) setPlayerIndex: (int) itemIndex{
-    if(itemIndex > 0 && _items.count > itemIndex){
+    if(itemIndex >= 0 && _items.count > itemIndex){
         _itemIndex = itemIndex;
+        [self initPlayerItem];
     }
 }
 

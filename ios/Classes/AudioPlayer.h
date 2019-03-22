@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol AudioPlayerListener;
 
 @interface AudioPlayer : NSObject
++ (id)sharedManager;
 
 - (void) initPlayerQueue: (NSArray*)items;
 - (void) playerPlayPause;

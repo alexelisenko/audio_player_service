@@ -7,9 +7,8 @@ class AudioPlayerService {
   static const MethodChannel _channel =
       const MethodChannel('audio_player_service');
 
-  static AudioPlayer audioPlayer() {
-    return new AudioPlayer(
-      channel: _channel,
-    );
-  }
+  static final audioPlayer = AudioPlayer(
+    channel: _channel,
+  );
+  
 }

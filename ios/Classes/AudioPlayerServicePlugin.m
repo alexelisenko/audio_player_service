@@ -5,22 +5,33 @@
   AudioPlayer* _audioPlayer;
 }
 
++ (id)sharedManager {
+    static AudioPlayerServicePlugin *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[self alloc] init];
+    });
+    return instance;
+}
+
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
   FlutterMethodChannel* channel = [FlutterMethodChannel
       methodChannelWithName:@"audio_player_service"
             binaryMessenger:[registrar messenger]];
-  AudioPlayerServicePlugin* instance = [[AudioPlayerServicePlugin alloc] initWithChannel: channel];
-  [registrar addMethodCallDelegate:instance channel:channel];
+  [[AudioPlayerServicePlugin sharedManager] setChannel: channel];
+  [registrar addMethodCallDelegate:[AudioPlayerServicePlugin sharedManager] channel:channel];
 }
 
-- (id)initWithChannel:(FlutterMethodChannel*)channel {
+- (id)init {
   if (self = [super init]) {
-    _channel = channel;
-    
-    _audioPlayer = [[AudioPlayer alloc] init];
+    _audioPlayer = [AudioPlayer sharedManager];
     [_audioPlayer addListener:self];
   }
   return self;
+}
+
+- (void)setChannel:(FlutterMethodChannel*)channel {
+  _channel = channel;
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -89,6 +100,8 @@
     NSDictionary* args = call.arguments;
 
     NSLog(@"platform: setIndex args: %@", args);
+
+    [_audioPlayer setPlayerIndex: [[args objectForKey:@"index"] intValue]];
 
     result(nil);
   

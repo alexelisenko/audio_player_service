@@ -23,11 +23,12 @@ class _MyAppState extends State<MyApp> {
     List<AudioPlayerItem> items = [];
     
     items.add(AudioPlayerItem(
-      url: "https://api.soundcloud.com/tracks/266891990/stream?secret_token=s-tj3IS&client_id=LBCcHmRB8XSStWL6wKH2HPACspQlXg2P",
-      thumbUrl: "https://static1.squarespace.com/static/542b4e6fe4b0d082dad4801a/542f0deee4b09915be98e7d4/59da4ff49f7456baacd79051/1507479576977/Vents+V4.png?format=2500w", 
-      title: 'Track 1',
-      duration: Duration(seconds: 162),
+      url: "file:///Users/alex/Library/Developer/CoreSimulator/Devices/56BD82DB-B0CC-4D04-BC24-2DEA305B2FFC/data/Containers/Data/Application/A6D2E69F-F0CD-444F-A3E4-F779C918785B/Documents/acHKPu4oIro.mp3",
+      thumbUrl: "file:///Users/alex/Library/Developer/CoreSimulator/Devices/56BD82DB-B0CC-4D04-BC24-2DEA305B2FFC/data/Containers/Data/Application/A6D2E69F-F0CD-444F-A3E4-F779C918785B/Documents/310_thumb",
+      title: 'Coldplay - Midnight (Kygo Remix)',
+      duration: Duration(seconds: 313),
       album: 'Audio',
+      local: true
     ));
 
     items.add(AudioPlayerItem(
@@ -36,6 +37,7 @@ class _MyAppState extends State<MyApp> {
       title: 'Track 2',
       duration: Duration(seconds: 140),
       album: 'Audio',
+      local:false
     ));
 
     items.add(AudioPlayerItem(
@@ -44,6 +46,7 @@ class _MyAppState extends State<MyApp> {
       title: 'Track 3',
       duration: Duration(seconds: 96),
       album: 'Audio',
+      local: false
     ));
 
     return items;
@@ -53,7 +56,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     
-    audioPlayer = AudioPlayerService.audioPlayer();
+    audioPlayer = AudioPlayerService.audioPlayer;
     audioPlayer.addListener(
       AudioPlayerListener(
         onAudioStateChanged: (AudioPlayerState state) {
