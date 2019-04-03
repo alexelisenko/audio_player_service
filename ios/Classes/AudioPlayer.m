@@ -230,13 +230,9 @@
     
     NSLog(@"playing file: %@", [[_items objectAtIndex:itemIndex] objectForKey:@"url"]);
     
-    // AVPlayerItem *currentItem = [_player currentItem];
-    // NSUInteger currentIndex = [[queuePlayer items] indexOfObject:currentItem];
-    // for (;currentIndex<indexToPlay; currentIndex++)
-    // {
-    // [queuePlayer advanceToNextItem];
-    // }
-
+    // TODO: Fix this
+    // This does not seem to work well for audio accessories/bluetooth devices.
+    // Its not broken, but the current index/ total supplied to devices is incorrect
     [_player removeAllItems];
     for (int i = itemIndex; i <_items.count; i ++) {
         if ([_player canInsertItem:item afterItem:nil]) {
