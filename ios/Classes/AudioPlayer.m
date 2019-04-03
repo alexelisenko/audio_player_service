@@ -143,14 +143,16 @@
         AVPlayerItem* playerItem;
 
         NSURL *url = [[NSURL alloc] initWithString: [item objectForKey:@"url"]];
-        NSLog(@"initPlayerqueue local: %@", [item objectForKey:@"local"]);
-        if([item objectForKey:@"local"]){
-            
+        
+        if([[item objectForKey:@"local"] intValue] == 1){
+
+            NSLog(@"initPlayerqueue local asset");    
             AVAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
             playerItem = [AVPlayerItem playerItemWithAsset:asset];
 
         }else{
-
+            
+            NSLog(@"initPlayerqueue remote asset");   
             playerItem = [[AVPlayerItem alloc] initWithURL:url];
 
         }
@@ -293,29 +295,39 @@
 
 - (void) setPlaybackStatusInfo{
     
-    int itemIndex = (int) _itemIndex;
-    
-    NSLog(@"initPlayerItem item: %@", [_items objectAtIndex:itemIndex]);
-    
-    NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
-    NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
-    
-    MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-        return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
-    }];
+    // This was added to handle metadata being passed to external devices (bluetooth in car),
+    // but it causes a crash in latest tests, leaving here until further testing
 
-    NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+    // int itemIndex = (int) _itemIndex;
     
-    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                                             itemTitle, MPMediaItemPropertyTitle,
-                                                             ControlArtwork, MPMediaItemPropertyArtwork,
-                                                             itemAlbum, MPMediaItemPropertyAlbumTitle,
-                                                             duration, MPMediaItemPropertyPlaybackDuration,
-                                                             _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime, 
-                                                             _player.rate, MPNowPlayingInfoPropertyPlaybackRate, nil];
+    // NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
 
-    NSLog(@"setPlaybackStatusInfo: position %@", _playerPosition);
-    
+    // @try{
+
+    //       NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
+    //       NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+
+    //       MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+    //           return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+    //       }];
+
+    //       NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+
+    //       [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+    //                                                                itemTitle, MPMediaItemPropertyTitle,
+    //                                                                ControlArtwork, MPMediaItemPropertyArtwork,
+    //                                                                itemAlbum, MPMediaItemPropertyAlbumTitle,
+    //                                                                duration, MPMediaItemPropertyPlaybackDuration,
+    //                                                                _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime,
+    //                                                                _player.rate, MPNowPlayingInfoPropertyPlaybackRate, nil];
+          
+    // }
+    // @catch (NSException * e) {
+    //     NSLog(@"setPlaybackStatusInfo Exception: %@", e);
+    // }
+    // @finally {
+    // }
+
 }
 
 - (void) playerPlaybackChanged: (MPChangePlaybackPositionCommandEvent *)event{
