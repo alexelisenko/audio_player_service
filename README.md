@@ -10,7 +10,7 @@ Edit your Runner project in Xcode and add the Audio Background Mode capability.
 
 ## Acknowledgments
 
-This plugin was inspired and partially plagorized from the following plugins:
+This plugin was inspired and partially plagiarized from the following plugins:
 
 - audio_service: https://pub.dartlang.org/packages/audio_service
 - fluttery_audio: https://pub.dartlang.org/packages/fluttery_audio
