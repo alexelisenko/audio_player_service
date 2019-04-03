@@ -8,7 +8,7 @@ Play audio/video with background audio, command center and external device suppo
 
 Edit your Runner project in Xcode and add the Audio Background Mode capability.
 
-## Acknoledgments
+## Acknowledgments
 
 This plugin was inspired and partially plagorized from the following plugins:
 
