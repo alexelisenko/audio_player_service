@@ -285,9 +285,9 @@ class AudioPlayer {
     channel.invokeMethod('pause');
   }
 
-  void seek(Duration duration) {
+  Future<void> seek(Duration duration) async {
     _log.fine('seek(): $duration');
-    channel.invokeMethod(
+    await channel.invokeMethod(
       'seek',
       {
         'seekPosition': duration.inSeconds,
