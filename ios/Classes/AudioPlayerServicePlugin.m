@@ -40,7 +40,7 @@
     
     NSDictionary* args = call.arguments;
 
-    NSLog(@"platform: initPlayerQueue items: %@", [args objectForKey:@"items"]);
+    NSLog(@"\nplatform: initPlayerQueue items: %@", [args objectForKey:@"items"]);
 
     [_audioPlayer playerStop];
     [_audioPlayer initPlayerQueue: [args objectForKey:@"items"]];
@@ -49,7 +49,7 @@
   
   } else if ([@"play" isEqualToString:call.method]) {
     
-    NSLog(@"platform: play");
+    NSLog(@"\nplatform: play");
 
     [_audioPlayer playerPlayPause];
 
@@ -57,7 +57,7 @@
   
   } else if ([@"pause" isEqualToString:call.method]) {
     
-    NSLog(@"platform: pause");
+    NSLog(@"\nplatform: pause");
 
     [_audioPlayer playerPlayPause];
 
@@ -65,7 +65,7 @@
   
   } else if ([@"stop" isEqualToString:call.method]) {
     
-    NSLog(@"platform: stop");
+    NSLog(@"\nplatform: stop");
 
     [_audioPlayer playerStop];
 
@@ -73,7 +73,7 @@
   
   } else if ([@"next" isEqualToString:call.method]) {
     
-    NSLog(@"platform: next");
+    NSLog(@"\nplatform: next");
 
     [_audioPlayer playerNext];
 
@@ -81,7 +81,7 @@
   
   } else if ([@"prev" isEqualToString:call.method]) {
     
-    NSLog(@"platform: prev");
+    NSLog(@"\nplatform: prev");
 
     [_audioPlayer playerPrevious];
 
@@ -90,8 +90,10 @@
   } else if ([@"seek" isEqualToString:call.method]) {
     
     NSDictionary* args = call.arguments;
+    
+    NSLog(@"\nplatform: seek args: %@", args);
 
-    NSLog(@"platform: seek args: %@", args);
+    [_audioPlayer playerSeek: [NSNumber numberWithInt: [[args objectForKey:@"seekPosition"] intValue]]];
 
     result(nil);
   
@@ -99,7 +101,7 @@
     
     NSDictionary* args = call.arguments;
 
-    NSLog(@"platform: setIndex args: %@", args);
+    NSLog(@"\nplatform: setIndex args: %@", args);
 
     [_audioPlayer setPlayerIndex: [[args objectForKey:@"index"] intValue]];
 
@@ -116,12 +118,12 @@
 # pragma mark AudioPlayerListener
 //----------- AudioPlayerListener -----------
 - (void) onAudioLoading {
-  NSLog(@"onAudioLoading");
+  NSLog(@"\nonAudioLoading");
   [_channel invokeMethod:@"onAudioLoading" arguments:nil];
 }
 
 - (void) onBufferingUpdate:(int) percent {
-  NSLog(@"onBufferingUpdate: %i", percent);
+  NSLog(@"\nonBufferingUpdate: %i", percent);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:percent], @"percent",
                         nil];
@@ -129,7 +131,7 @@
 }
 
 - (void) onAudioReady:(long) audioLengthInMillis {
-  NSLog(@"onAudioReady");
+  NSLog(@"\nonAudioReady");
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithLong:audioLengthInMillis], @"audioLength",
                         nil];
@@ -137,17 +139,17 @@
 }
 
 - (void) onPlayerPlaying {
-  NSLog(@"onPlayerPlaying");
+  NSLog(@"\nonPlayerPlaying");
   [_channel invokeMethod:@"onPlayerPlaying" arguments:nil];
 }
 
 - (void) onFailedPrepare {
-  NSLog(@"onFailedPrepare");
+  NSLog(@"\nonFailedPrepare");
   [_channel invokeMethod:@"onFailedPrepare" arguments:nil];
 }
 
 - (void) onPlayerPlaybackUpdate:(NSNumber*)position :(long)audioLength {
-  NSLog(@"onPlayerPlaybackUpdate - position: %@", position);
+  NSLog(@"\nonPlayerPlaybackUpdate - position: %@", position);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         position, @"position",
                         [NSNumber numberWithLong:audioLength], @"audioLength",
@@ -156,27 +158,27 @@
 }
 
 - (void) onPlayerPaused {
-  NSLog(@"onPlayerPaused");
+  NSLog(@"\nonPlayerPaused");
   [_channel invokeMethod:@"onPlayerPaused" arguments:nil];
 }
 
 - (void) onPlayerStopped {
-  NSLog(@"onPlayerStopped");
+  NSLog(@"\nonPlayerStopped");
   [_channel invokeMethod:@"onPlayerStopped" arguments:nil];
 }
 
 - (void) onPlayerCompleted {
-  NSLog(@"onPlayerCompleted");
+  NSLog(@"\nonPlayerCompleted");
   [_channel invokeMethod:@"onPlayerCompleted" arguments:nil];
 }
 
 - (void) onSeekStarted {
-  NSLog(@"onSeekStarted");
+  NSLog(@"\nonSeekStarted");
   [_channel invokeMethod:@"onSeekStarted" arguments:nil];
 }
 
 - (void) onSeekCompleted:(long) position {
-  NSLog(@"onSeekCompleted");
+  NSLog(@"\nonSeekCompleted");
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithLong:position], @"position",
                         nil];
@@ -185,7 +187,7 @@
 
 // play next track started
 - (void) onNextStarted: (int) index{
-  NSLog(@"onNextStarted: index %d", index);
+  NSLog(@"\nonNextStarted: index %d", index);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:index], @"index",
                         nil];
@@ -194,7 +196,7 @@
 
 // play next track completed
 - (void) onNextCompleted: (int) index{
-  NSLog(@"onNextCompleted: index %d", index);
+  NSLog(@"\nonNextCompleted: index %d", index);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:index], @"index",
                         nil];
@@ -203,7 +205,7 @@
 
 // play previous track started
 - (void) onPreviousStarted: (int) index{
-  NSLog(@"onPreviousStarted: index %d", index);
+  NSLog(@"\nonPreviousStarted: index %d", index);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:index], @"index",
                         nil];
@@ -212,7 +214,7 @@
 
 // play previous track completed
 - (void) onPreviousCompleted: (int) index{
-  NSLog(@"onPreviousCompleted: index %d", index);
+  NSLog(@"\nonPreviousCompleted: index %d", index);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:index], @"index",
                         nil];
@@ -221,7 +223,7 @@
 
 // play previous track completed
 - (void) onIndexChangedExternally: (int) index{
-  NSLog(@"onIndexChangedExternally: index %d", index);
+  NSLog(@"\nonIndexChangedExternally: index %d", index);
   NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                         [NSNumber numberWithInt:index], @"index",
                         nil];

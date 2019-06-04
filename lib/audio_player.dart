@@ -76,9 +76,12 @@ class AudioPlayer {
           }
           break;
         case "onPlayerPlaybackUpdate":
-          _log.fine('plugin: onPlayerPlaybackUpdate, position: ${call.arguments['position']}');
+          //_log.fine('plugin: onPlayerPlaybackUpdate, position: ${call.arguments['position']}');
           // The playhead has moved, update our playhead position reference.
-          _setPosition(new Duration(seconds: call.arguments['position']));
+            if(call.arguments != null){
+                _log.fine('plugin: onPlayerPlaybackUpdate, arguments: ${call.arguments}');
+                _setPosition(new Duration(seconds: call.arguments['position']));
+            }
           break;
         case "onPlayerPaused":
           _log.fine('plugin: onPlayerPaused');
@@ -217,9 +220,11 @@ class AudioPlayer {
   Duration get position => _position;
 
   _setPosition(Duration position) {
+      _log.fine("_setPosition $position");
     _position = position;
 
     if(invokeListeners) {
+        _log.fine("_setPosition invokeListeners $_listeners");
       for (AudioPlayerListener listener in _listeners) {
         listener.onPlayerPositionChanged(position);
       }
@@ -228,6 +233,7 @@ class AudioPlayer {
 
   void addListener(AudioPlayerListener listener) {
     _listeners.add(listener);
+    invokeListeners = true;
   }
 
   void removeListener(AudioPlayerListener listener) {
@@ -239,7 +245,6 @@ class AudioPlayer {
     _log.fine("removing all listeners");
     _listeners.clear();
     _log.fine("_listeners ${_listeners}");
-    invokeListeners = true;
   }
 
   Future<void> initPlayerQueue(List<AudioPlayerItem> newItems) async {
@@ -295,9 +300,9 @@ class AudioPlayer {
     );
   }
 
-  void stop() {
+  Future<void> stop() async {
     _log.fine('stop()');
-    channel.invokeMethod('stop');
+    await channel.invokeMethod('stop');
   }
 }
 
@@ -306,6 +311,7 @@ class AudioPlayerListener {
     Function(AudioPlayerState) onAudioStateChanged,
     VoidCallback onAudioLoading,
     VoidCallback onAudioReady,
+    VoidCallback onFailedPrepare,
     Function(Duration) onAudioLengthChanged,
     Function(Duration) onPlayerPositionChanged,
     VoidCallback onPlayerPlaying,
@@ -322,6 +328,7 @@ class AudioPlayerListener {
   })  : _onAudioStateChanged = onAudioStateChanged,
         _onAudioLoading = onAudioLoading,
         _onAudioReady = onAudioReady,
+        _onFailedPrepare = onFailedPrepare,
         _onAudioLengthChanged = onAudioLengthChanged,
         _onPlayerPositionChanged = onPlayerPositionChanged,
         _onPlayerPlaying = onPlayerPlaying,
@@ -339,6 +346,7 @@ class AudioPlayerListener {
   final Function(AudioPlayerState) _onAudioStateChanged;
   final VoidCallback _onAudioLoading;
   final VoidCallback _onAudioReady;
+  final VoidCallback _onFailedPrepare;
   final Function(Duration) _onAudioLengthChanged;
   final Function(Duration) _onPlayerPositionChanged;
   final VoidCallback _onPlayerPlaying;
@@ -369,6 +377,12 @@ class AudioPlayerListener {
     if (_onAudioReady != null) {
       _onAudioReady();
     }
+  }
+
+  onFailedPrepare() {
+      if (_onFailedPrepare != null) {
+          _onFailedPrepare();
+      }
   }
 
   onAudioLengthChanged(Duration length) {

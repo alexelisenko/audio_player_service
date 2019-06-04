@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void) initPlayerQueue: (NSArray*)items;
 - (void) playerPlayPause;
 - (void) playerStop;
+- (void) playerSeek: (NSNumber*) seconds;
 
 - (void) playerNext;
 - (void) playerPrevious;
