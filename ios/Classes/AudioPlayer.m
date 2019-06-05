@@ -106,6 +106,16 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
 }
 
+- (void) sendPlatformDebugMessage: (NSString*) message {
+
+    @try{
+        for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
+            [listener onDebugMessage: message];
+        }
+    }@catch(NSException * e){}
+
+}
+
 - (void) deinitPlayerQueue{
 
     @try {
@@ -124,7 +134,7 @@
         
     }
     @catch (NSException * e) {
-        NSLog(@"\ndeinitPlayerQueue Exception: %@", e);
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"deinitPlayerQueue Exception: %@", e]];
     }
     @finally {
     }
@@ -133,69 +143,85 @@
 
 - (void) initPlayerQueue: (NSArray*)items{
     
-    [self deinitPlayerQueue];
-
-    _items = items;
+    //[self deinitPlayerQueue];
     
-    //set player items, we only need the URL
-    for (NSDictionary* item in _items) {
+    @try{
+
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerQueue start: %@", items]];
+
+        _items = items;
         
-        AVPlayerItem* playerItem;
-
-        NSURL *url = [[NSURL alloc] initWithString: [item objectForKey:@"url"]];
-        
-        if([[item objectForKey:@"local"] intValue] == 1){
-
-            NSLog(@"\ninitPlayerqueue local asset");    
-            AVAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
-            playerItem = [AVPlayerItem playerItemWithAsset:asset];
-
-        }else{
+        //set player items, we only need the URL
+        for (NSDictionary* item in _items) {
             
-            NSLog(@"\ninitPlayerqueue remote asset");   
-            playerItem = [[AVPlayerItem alloc] initWithURL:url];
+            AVPlayerItem* playerItem;
 
+            NSURL *url = [[NSURL alloc] initWithString: [item objectForKey:@"url"]];
+            
+            if([[item objectForKey:@"local"] intValue] == 1){
+
+                NSLog(@"initPlayerqueue local asset");    
+                AVAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+                playerItem = [AVPlayerItem playerItemWithAsset:asset];
+
+            }else{
+                
+                NSLog(@"initPlayerqueue remote asset");   
+                playerItem = [[AVPlayerItem alloc] initWithURL:url];
+
+            }
+
+            [_playerItems addObject:playerItem];
+
+            //edit thumbs right away
+            NSString* itemThumb = [item objectForKey:@"thumb"];
+            NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
+            NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
+            UIImage *artwork = [[UIImage alloc] initWithData:data];
+            [item setValue:[self resizeImageWithImage:artwork scaledToSize:CGSizeMake(600, 600)] forKey:@"thumb_image"];
+            
         }
+        if(_player == nil){
 
-        [_playerItems addObject:playerItem];
-
-        //edit thumbs right away
-        NSString* itemThumb = [item objectForKey:@"thumb"];
-        NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
-        NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
-        UIImage *artwork = [[UIImage alloc] initWithData:data];
-        [item setValue:[self resizeImageWithImage:artwork scaledToSize:CGSizeMake(600, 600)] forKey:@"thumb_image"];
+            _player = [[AVQueuePlayer alloc] initWithItems:_playerItems];
         
-    }
-    
-    _player = [[AVQueuePlayer alloc] initWithItems:_playerItems];
-    
-    //get audio state and call listeners
-    [_player addObserver:self forKeyPath:@"status" options:0 context:nil];
-    [_player addObserver:self forKeyPath:@"rate" options:0 context:nil];
-    
-    _playerPosition = [NSNumber numberWithInt:0];
-    
-    //use weak self to avoid retain cycle
-    __unsafe_unretained typeof(self) weakSelf = self;
-    
-    //set listener to pull playback position
-    _periodicListener = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC) queue:NULL usingBlock:^(CMTime time) {
-        weakSelf->_playerPosition = [NSNumber numberWithInt:[weakSelf playbackPosition]/1000];
-        for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
-            [listener onPlayerPlaybackUpdate:weakSelf->_playerPosition :[weakSelf audioLength]];
+            //get audio state and call listeners
+            [_player addObserver:self forKeyPath:@"status" options:0 context:nil];
+            [_player addObserver:self forKeyPath:@"rate" options:0 context:nil];
+            
+            _playerPosition = [NSNumber numberWithInt:0];
+            
+            //use weak self to avoid retain cycle
+            __unsafe_unretained typeof(self) weakSelf = self;
+            
+            //set listener to pull playback position
+            _periodicListener = [_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC) queue:NULL usingBlock:^(CMTime time) {
+                @try{
+                    weakSelf->_playerPosition = [NSNumber numberWithInt:[weakSelf playbackPosition]/1000];
+                    for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
+                        [listener onPlayerPlaybackUpdate:weakSelf->_playerPosition :[weakSelf audioLength]];
+                    }
+                    [weakSelf setPlaybackStatusInfo];
+                }@catch(NSException * e){}
+            }];
+
         }
-        [weakSelf setPlaybackStatusInfo];
-    }];
-    
-    NSLog(@"\ninitPlayerQueue done");
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerQueue Exception: %@", e]];
+    }
+    @finally {
+    }
+
+    NSLog(@"initPlayerQueue done");
     
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
-    NSLog(@"\nobserveValueForKeyPath: %@", keyPath);
+    [self sendPlatformDebugMessage:[NSString stringWithFormat:@"observeValueForKeyPath keyPath: %@", keyPath]];
+    [self sendPlatformDebugMessage:[NSString stringWithFormat:@"observeValueForKeyPath object: %@", object]];
     if ([keyPath isEqualToString:@"status"]) {
-        if (_player.status == AVPlayerStatusReadyToPlay && object == _player.currentItem) {
+        if (_player.status == AVPlayerStatusReadyToPlay) {
             // Note: we look for the AVPlayerItem's status ready rather than the AVPlayer because this
             // way we know that the duration will be available.
             [self _onAudioReady];
@@ -209,60 +235,71 @@
 
 - (void) initPlayerItem{
     
-    _ready = NO;
-    _isPlaying = NO;
-    _isCompleted = NO;
-    
-    int itemIndex = (int) _itemIndex;
-    
-    NSLog(@"\ninitPlayerItem with index: %d", itemIndex);
-    
-    //AVPlayerItem * item = [_playerItems objectAtIndex:itemIndex];
-    
-    //NSLog(@"\ninitPlayerItem AVPlayerItem: %@", item);
-    
-    NSLog(@"\ninitPlayerItem item: %@", [_items objectAtIndex:itemIndex]);
-    
-    NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
-    NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
-    
-    MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-        return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
-    }];
-    
-    NSLog(@"\nplaying file: %@", [[_items objectAtIndex:itemIndex] objectForKey:@"url"]);
-    
-    // TODO: Fix this
-    // This does not seem to work well for audio accessories/bluetooth devices.
-    // Its not broken, but the current index/ total supplied to devices is incorrect
-    BOOL itemInserted = NO;
-    [_player removeAllItems];
-    for (int i = itemIndex; i <_items.count; i ++) {
-        AVPlayerItem * new_item = [_playerItems objectAtIndex:i];
-        if ([_player canInsertItem:new_item afterItem:nil]) {
-            [new_item seekToTime:kCMTimeZero completionHandler:nil];
-            [_player insertItem:new_item afterItem:nil];
-            itemInserted = YES;
-        }
-    }
-    
-    if(itemInserted){
-    
-        NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
-    
-        [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                                                itemTitle, MPMediaItemPropertyTitle,
-                                                                ControlArtwork, MPMediaItemPropertyArtwork,
-                                                                itemAlbum, MPMediaItemPropertyAlbumTitle,
-                                                                duration, MPMediaItemPropertyPlaybackDuration,
-                                                                [NSNumber numberWithDouble:1.0], MPNowPlayingInfoPropertyPlaybackRate, nil];
+    @try{
+        _ready = NO;
+        _isPlaying = NO;
+        _isCompleted = NO;
         
-        [self _onAudioReady];
-    
-    }else{
+        int itemIndex = (int) _itemIndex;
+        
+        NSLog(@"initPlayerItem with index: %d", itemIndex);
+        
+        //AVPlayerItem * item = [_playerItems objectAtIndex:itemIndex];
+        
+        //NSLog(@"initPlayerItem AVPlayerItem: %@", item);
+        
+        NSLog(@"initPlayerItem item: %@", [_items objectAtIndex:itemIndex]);
+        
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem  item: %@", [_items objectAtIndex:itemIndex]]];
 
-        [self _onFailedToPrepareAudio];
+        NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
+        NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+        
+        MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+            return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+        }];
+        
+        NSLog(@"playing file: %@", [[_items objectAtIndex:itemIndex] objectForKey:@"url"]);
+        
+        // TODO: Fix this
+        // This does not seem to work well for audio accessories/bluetooth devices.
+        // Its not broken, but the current index/ total supplied to devices is incorrect
+        BOOL itemInserted = NO;
+        [_player removeAllItems];
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem insert Items loop"]];
+        for (int i = itemIndex; i <_items.count; i ++) {
+            AVPlayerItem * new_item = [_playerItems objectAtIndex:i];
+            if ([_player canInsertItem:new_item afterItem:nil]) {
+                [new_item seekToTime:kCMTimeZero completionHandler:nil];
+                [_player insertItem:new_item afterItem:nil];
+                itemInserted = YES;
+            }
+        }
+        
+        if(itemInserted){
+        
+            NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+        
+            [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                                                    itemTitle, MPMediaItemPropertyTitle,
+                                                                    ControlArtwork, MPMediaItemPropertyArtwork,
+                                                                    itemAlbum, MPMediaItemPropertyAlbumTitle,
+                                                                    duration, MPMediaItemPropertyPlaybackDuration,
+                                                                    [NSNumber numberWithDouble:1.0], MPNowPlayingInfoPropertyPlaybackRate, nil];
+            
+            [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem itemInserted"]];
 
+            //[self _onAudioReady];
+        
+        }else{
+
+            [self _onFailedToPrepareAudio];
+
+        }
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem Exception: %@", e]];
+    }
+    @finally {
     }
 
 }
@@ -297,9 +334,9 @@
 }
 
 - (void) addListener:(id <AudioPlayerListener>) listener {
-    NSLog(@"\nAdding listener: %@", listener);
+    NSLog(@"Adding listener: %@", listener);
     [_listeners addObject:listener];
-    NSLog(@"\nadded listeners: %@", _listeners);
+    NSLog(@"added listeners: %@", _listeners);
 }
 
 # pragma mark player commands
@@ -311,7 +348,7 @@
 
     // int itemIndex = (int) _itemIndex;
     
-    // NSLog(@"\nsetPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
+    // NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
 
     // @try{
 
@@ -334,7 +371,7 @@
           
     // }
     // @catch (NSException * e) {
-    //     NSLog(@"\nsetPlaybackStatusInfo Exception: %@", e);
+    //     NSLog(@"setPlaybackStatusInfo Exception: %@", e);
     // }
     // @finally {
     // }
@@ -342,74 +379,113 @@
 }
 
 - (void) playerPlaybackChanged: (MPChangePlaybackPositionCommandEvent *)event{
-    if (_player.currentItem != nil) {
+    
+    @try{
+
+        if (_player.currentItem != nil) {
         
-        //use weak self to avoid retain cycle
-        __unsafe_unretained typeof(self) weakSelf = self;
-        
-        [_player seekToTime:CMTimeMake([event positionTime], 1) completionHandler:^ void (BOOL finished){
-            if(finished){
-                for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
-                    [listener onSeekCompleted:[event positionTime]];
+            //use weak self to avoid retain cycle
+            __unsafe_unretained typeof(self) weakSelf = self;
+            
+            [_player seekToTime:CMTimeMake([event positionTime], 1) completionHandler:^ void (BOOL finished){
+                if(finished){
+                    for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
+                        [listener onSeekCompleted:[event positionTime]];
+                    }
                 }
-            }
-        }];
+            }];
+        }
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlaybackChanged Exception: %@", e]];
     }
+    @finally {
+    }
+    
 }
 
 - (void) playerSeek: (NSNumber*) seconds{
-    if (_player.currentItem != nil) {
+    
+    @try{
+
+        if (_player.currentItem != nil) {
         
-        //use weak self to avoid retain cycle
-        __unsafe_unretained typeof(self) weakSelf = self;
-        
-        [_player seekToTime:CMTimeMake([seconds intValue], 1) completionHandler:^ void (BOOL finished){
-            if(finished){
-                for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
-                    [listener onSeekCompleted:[seconds longValue]];
+            //use weak self to avoid retain cycle
+            __unsafe_unretained typeof(self) weakSelf = self;
+            
+            [_player seekToTime:CMTimeMake([seconds intValue], 1) completionHandler:^ void (BOOL finished){
+                if(finished){
+                    for (id<AudioPlayerListener> listener in [weakSelf->_listeners allObjects]) {
+                        [listener onSeekCompleted:[seconds longValue]];
+                    }
                 }
-            }
-        }];
+            }];
+        }
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerSeek Exception: %@", e]];
     }
+    @finally {
+    }
+    
 }
 
 - (void) playerPlayPause{
-    if (_player.currentItem != nil && _ready == YES) {
-        if ([_player rate] > 0.0) {
-            NSLog(@"\nplayerPlayPause pause");
-            [_player pause];
+
+    @try{
+        
+        if (_player.currentItem != nil && _ready == YES) {
+            if ([_player rate] > 0.0) {
+                NSLog(@"playerPlayPause pause");
+                [_player pause];
+            }else{
+                NSLog(@"playerPlayPause play");
+                [_player play];
+            }
         }else{
-            NSLog(@"\nplayerPlayPause play");
-            [_player play];
+            NSLog(@"playerPlayPause initPlayerItem");
+            [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause initPlayerItem"]];
+            [self initPlayerItem];
         }
-    }else{
-        NSLog(@"\nplayerPlayPause initPlayerItem");
-        [self initPlayerItem];
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause Exception: %@", e]];
+    }
+    @finally {
     }
     
 }
 
 - (void) playerStop{
     
-    NSLog(@"\nplayerStop");
-    if (_player.currentItem != nil){
-        [_player pause];
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+    NSLog(@"playerStop");
+
+    @try{
+
+        if (_player.currentItem != nil){
+            [_player pause];
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+        }
+        
+        for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
+            [listener onPlayerStopped];
+        }
+        
+        [_player replaceCurrentItemWithPlayerItem:nil];
+        [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerStop Exception: %@", e]];
     }
-    
-    for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
-        [listener onPlayerStopped];
+    @finally {
     }
-    
-    [_player replaceCurrentItemWithPlayerItem:nil];
-    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
     
 }
 
 - (void) playerNext{
-    NSLog(@"\nplayerNext");
+    NSLog(@"playerNext");
     if (_items.count > (int) _itemIndex+1) {
-        [self playerStop];
+        //[self playerStop];
         _itemIndex = _itemIndex+1;
         for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
             [listener onNextStarted: (int) _itemIndex];
@@ -426,7 +502,7 @@
 
 - (void) playerPrevious{
     if ((int) _itemIndex > 0) {
-        [self playerStop];
+        //[self playerStop];
         _itemIndex = _itemIndex-1;
         for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
             [listener onPreviousStarted: (int) _itemIndex];
@@ -453,27 +529,36 @@
 
 - (void) _onAudioReady {
     
-    NSLog(@"\n_onAudioReady ready: %d", _ready);
-    NSLog(@"\n_onAudioReady listeners: %@", _listeners);
+    [self sendPlatformDebugMessage:[NSString stringWithFormat:@"_onAudioReady ready: %d", _ready]];
+
     if (!_ready) {
-        _ready = YES;
-        _isPlaying = FALSE;
         
-        for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
-            [listener onAudioReady:[self audioLength]];
+        @try{
+            
+            _ready = YES;
+            
+            for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
+                [listener onAudioReady:[self audioLength]];
+            }
+            
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playerDidFinish) name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+            
+            _playerPosition = [NSNumber numberWithInt:0];
+            [_player play];
+            [self setPlaybackStatusInfo];
+            [self _onPlaybackRateChange];
+            
+        }@catch (NSException * e) {
+            [self sendPlatformDebugMessage:[NSString stringWithFormat:@"_onAudioReady Exception: %@", e]];
         }
-        
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playerDidFinish) name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
-        
-        _playerPosition = [NSNumber numberWithInt:0];
-        [_player play];
-        [self setPlaybackStatusInfo];
+        @finally {
+        }
         
     }
 }
 
 - (void) _onFailedToPrepareAudio {
-    NSLog(@"\nAVPlayer failed to load audio");
+    NSLog(@"AVPlayer failed to load audio");
     
     for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
         [listener onFailedPrepare];
@@ -482,27 +567,36 @@
 }
 
 - (void) _onPlaybackRateChange {
-    NSLog(@"\nRate just changed to %f", _player.rate);
-    if (_player.rate > 0 && !_isPlaying) {
-        // Just started playing.
-        NSLog(@"\nAVPlayer started playing.");
-        for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
-            [listener onPlayerPlaying];
+    @try{
+
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"_onPlaybackRateChange _player.rate: %f", _player.rate]];
+        if (_player.rate > 0 && !_isPlaying) {
+            // Just started playing.
+            NSLog(@"AVPlayer started playing.");
+            for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
+                [listener onPlayerPlaying];
+            }
+            _isPlaying = YES;
+            _isCompleted = NO;
+        } else if (_player.rate == 0 && _isPlaying) {
+            // Just paused playing.
+            NSLog(@"AVPlayer paused playback.");
+            for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
+                [listener onPlayerPaused];
+            }
+            _isPlaying = NO;
         }
-        _isPlaying = YES;
-        _isCompleted = NO;
-    } else if (_player.rate == 0 && _isPlaying) {
-        // Just paused playing.
-        NSLog(@"\nAVPlayer paused playback.");
-        for (id<AudioPlayerListener> listener in [_listeners allObjects]) {
-            [listener onPlayerPaused];
-        }
-        _isPlaying = NO;
+
+    }@catch (NSException * e) {
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"_onPlaybackRateChange Exception: %@", e]];
     }
+    @finally {
+    }
+    
 }
 
 - (void) playerDidFinish {
-    NSLog(@"\nplayerDidFinish");
+    NSLog(@"playerDidFinish");
     _isPlaying = NO;
     _isCompleted = YES;
     

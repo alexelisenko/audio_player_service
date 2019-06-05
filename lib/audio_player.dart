@@ -22,7 +22,8 @@ class AudioPlayer {
   AudioPlayer({
     this.channel,
   }) {
-    
+    hierarchicalLoggingEnabled = true;
+    _log.level = Level.OFF;
     _log.fine('AudioPlayer init');
 
     _setState(AudioPlayerState.idle);
@@ -133,6 +134,7 @@ class AudioPlayer {
           break;
         case "onNextStarted":
           _log.fine('plugin: onNextStarted, index: ${call.arguments['index']}');
+          _setState(AudioPlayerState.loading);
           if(invokeListeners) {
             for (AudioPlayerListener listener in _listeners) {
               listener.onNextStarted(call.arguments['index']);
@@ -146,9 +148,11 @@ class AudioPlayer {
               listener.onNextCompleted(call.arguments['index']);
             }
           }
+          _setState(AudioPlayerState.playing);
           break;
         case "onPreviousStarted":
           _log.fine('plugin: onPreviousStarted, index: ${call.arguments['index']}');
+          _setState(AudioPlayerState.loading);
           if(invokeListeners) {
             for (AudioPlayerListener listener in _listeners) {
               listener.onPreviousStarted(call.arguments['index']);
@@ -162,6 +166,7 @@ class AudioPlayer {
               listener.onPreviousCompleted(call.arguments['index']);
             }
           }
+          _setState(AudioPlayerState.playing);
           break;
         case "onIndexChangedExternally":
           _log.fine('plugin: onIndexChangedExternally, index: ${call.arguments['index']}');
@@ -169,6 +174,13 @@ class AudioPlayer {
             for (AudioPlayerListener listener in _listeners) {
               listener.onIndexChangedExternally(call.arguments['index']);
             }
+          }
+          break;
+        case "onDebugMessage":
+          if(invokeListeners) {
+              for (AudioPlayerListener listener in _listeners) {
+                  listener.onDebugMessage(call.arguments['message']);
+              }
           }
           break;
       }
@@ -221,6 +233,11 @@ class AudioPlayer {
 
   _setPosition(Duration position) {
       _log.fine("_setPosition $position");
+
+      if(position == null){
+          position = Duration();
+      }
+
     _position = position;
 
     if(invokeListeners) {
@@ -252,12 +269,17 @@ class AudioPlayer {
     this.playerItems = newItems;
     List<Map<String, dynamic>> items = playerItems.map((item) => item.toMap()).toList();
 
-    await channel.invokeMethod(
-      'initPlayerQueue',
-      {'items': items},
-    );
+    try {
+        print("initPlayerQueue() start");
+        await channel.invokeMethod('initPlayerQueue', <String, dynamic>{
+            'items': items
+        });
+        _queueInitialized = true;
+    } catch (e) {
+        print("initPlayerQueue() PlatformException");
+        throw 'Unable to initPlayerQueue: $e';
+    }
 
-    _queueInitialized = true;
   }
 
   Future<void> setIndex(int index) async {
@@ -269,10 +291,9 @@ class AudioPlayer {
     currentIndex = index;
   }
 
-  void play() {
+  Future<void> play() async {
     _log.fine('play()');
-    channel.invokeMethod('play');
-
+    await channel.invokeMethod('play');
   }
 
   void next() {
@@ -285,9 +306,9 @@ class AudioPlayer {
     channel.invokeMethod('prev');
   }
 
-  void pause() {
+  Future<void> pause() async {
     _log.fine('pause()');
-    channel.invokeMethod('pause');
+    await channel.invokeMethod('pause');
   }
 
   Future<void> seek(Duration duration) async {
@@ -320,6 +341,7 @@ class AudioPlayerListener {
     VoidCallback onPlayerCompleted,
     VoidCallback onSeekStarted,
     Function(int) onSeekCompleted,
+    Function(String) onDebugMessage,
     Function(int) onNextStarted,
     Function(int) onNextCompleted,
     Function(int) onPreviousStarted,
@@ -337,6 +359,7 @@ class AudioPlayerListener {
         _onPlayerCompleted = onPlayerCompleted,
         _onSeekStarted = onSeekStarted,
         _onSeekCompleted = onSeekCompleted,
+        _onDebugMessage = onDebugMessage,
         _onNextStarted = onNextStarted,
         _onNextCompleted = onNextCompleted,
         _onPreviousStarted = onPreviousStarted,
@@ -355,6 +378,7 @@ class AudioPlayerListener {
   final VoidCallback _onPlayerCompleted;
   final VoidCallback _onSeekStarted;
   final Function(int) _onSeekCompleted;
+  final Function(String) _onDebugMessage;
   final Function(int) _onNextStarted;
   final Function(int) _onNextCompleted;
   final Function(int) _onPreviousStarted;
@@ -431,6 +455,12 @@ class AudioPlayerListener {
     if (_onSeekCompleted != null) {
       _onSeekCompleted(position);
     }
+  }
+
+  onDebugMessage(String message) {
+      if (_onDebugMessage != null) {
+          _onDebugMessage(message);
+      }
   }
 
   onNextStarted(int index) {

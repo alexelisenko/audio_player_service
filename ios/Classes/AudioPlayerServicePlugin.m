@@ -40,9 +40,9 @@
     
     NSDictionary* args = call.arguments;
 
-    NSLog(@"\nplatform: initPlayerQueue items: %@", [args objectForKey:@"items"]);
+    NSLog(@"platform: initPlayerQueue items: %@", [args objectForKey:@"items"]);
 
-    [_audioPlayer playerStop];
+    //[_audioPlayer playerStop];
     [_audioPlayer initPlayerQueue: [args objectForKey:@"items"]];
 
     result(nil);
@@ -228,6 +228,13 @@
                         [NSNumber numberWithInt:index], @"index",
                         nil];
   [_channel invokeMethod:@"onIndexChangedExternally" arguments:args];
+}
+
+- (void) onDebugMessage:(NSString*) message {
+  NSMutableDictionary* args = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                        message, @"message",
+                        nil];
+  [_channel invokeMethod:@"onDebugMessage" arguments:args];
 }
 
 //---------- End AudioPlayerListener ---------

@@ -87,6 +87,9 @@ NS_ASSUME_NONNULL_BEGIN
 // A seek operation has completed.
 - (void) onSeekCompleted:(long)position;
 
+// Send messages for debugging
+- (void) onDebugMessage:(NSString*)message;
+
 @end
 
 NS_ASSUME_NONNULL_END
