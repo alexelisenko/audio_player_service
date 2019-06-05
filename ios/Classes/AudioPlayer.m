@@ -289,7 +289,7 @@
             
             [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem itemInserted"]];
 
-            //[self _onAudioReady];
+            [self _onAudioReady];
         
         }else{
 
@@ -434,16 +434,17 @@
 
     @try{
         
+        [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause _player.currentItem: %@", _player.currentItem]];
+
         if (_player.currentItem != nil && _ready == YES) {
             if ([_player rate] > 0.0) {
-                NSLog(@"playerPlayPause pause");
+                [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause pause"]];
                 [_player pause];
             }else{
-                NSLog(@"playerPlayPause play");
+                [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause play"]];
                 [_player play];
             }
         }else{
-            NSLog(@"playerPlayPause initPlayerItem");
             [self sendPlatformDebugMessage:[NSString stringWithFormat:@"playerPlayPause initPlayerItem"]];
             [self initPlayerItem];
         }
@@ -547,7 +548,7 @@
             [_player play];
             [self setPlaybackStatusInfo];
             [self _onPlaybackRateChange];
-            
+
         }@catch (NSException * e) {
             [self sendPlatformDebugMessage:[NSString stringWithFormat:@"_onAudioReady Exception: %@", e]];
         }
