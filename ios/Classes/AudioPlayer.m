@@ -150,6 +150,7 @@
         [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerQueue start: %@", items]];
 
         _items = items;
+        _playerItems = [[NSMutableArray alloc] init];
         
         //set player items, we only need the URL
         for (NSDictionary* item in _items) {
@@ -236,6 +237,7 @@
 - (void) initPlayerItem{
     
     @try{
+
         _ready = NO;
         _isPlaying = NO;
         _isCompleted = NO;
@@ -277,7 +279,7 @@
         }
         
         if(itemInserted){
-        
+            
             NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
         
             [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
