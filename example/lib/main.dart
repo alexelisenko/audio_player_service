@@ -21,6 +21,7 @@ class _MyAppState extends State<MyApp> {
     
     // If referencing a local file on the device, set local = true
     // the url must start with file:// protocol
+    // thumbUrl is optional
     items.add(AudioPlayerItem(
       id: "some_id_1",
       url: "https://api.soundcloud.com/tracks/295692063/stream?secret_token=s-tj3IS&client_id=LBCcHmRB8XSStWL6wKH2HPACspQlXg2P",
@@ -44,7 +45,7 @@ class _MyAppState extends State<MyApp> {
     items.add(AudioPlayerItem(
       id: "some_id_3",
       url: "https://api.soundcloud.com/tracks/9540779/stream?secret_token=s-tj3IS&client_id=LBCcHmRB8XSStWL6wKH2HPACspQlXg2P",
-      thumbUrl: "https://static1.squarespace.com/static/542b4e6fe4b0d082dad4801a/542f0deee4b09915be98e7d4/59da4fabb1ffb6b10394c55f/1507479475845/Spokes+EP+-+Cover+Only.png?format=2500w", 
+      // thumbUrl: "https://static1.squarespace.com/static/542b4e6fe4b0d082dad4801a/542f0deee4b09915be98e7d4/59da4fabb1ffb6b10394c55f/1507479475845/Spokes+EP+-+Cover+Only.png?format=2500w", 
       title: 'Track 3',
       duration: Duration(seconds: 95),
       album: 'Album 2',
