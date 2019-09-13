@@ -344,39 +344,36 @@
 # pragma mark player commands
 
 - (void) setPlaybackStatusInfo{
+
+     int itemIndex = (int) _itemIndex;
     
-    // This was added to handle metadata being passed to external devices (bluetooth in car),
-    // but it causes a crash in latest tests, leaving here until further testing
+     NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
 
-    // int itemIndex = (int) _itemIndex;
-    
-    // NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
+     @try{
 
-    // @try{
+           NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
+           NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
 
-    //       NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
-    //       NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+           MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+               return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+           }];
 
-    //       MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-    //           return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
-    //       }];
+           NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
 
-    //       NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
-
-    //       [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-    //                                                                itemTitle, MPMediaItemPropertyTitle,
-    //                                                                ControlArtwork, MPMediaItemPropertyArtwork,
-    //                                                                itemAlbum, MPMediaItemPropertyAlbumTitle,
-    //                                                                duration, MPMediaItemPropertyPlaybackDuration,
-    //                                                                _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime,
-    //                                                                _player.rate, MPNowPlayingInfoPropertyPlaybackRate, nil];
-          
-    // }
-    // @catch (NSException * e) {
-    //     NSLog(@"setPlaybackStatusInfo Exception: %@", e);
-    // }
-    // @finally {
-    // }
+           [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                                                    itemTitle, MPMediaItemPropertyTitle,
+                                                                    ControlArtwork, MPMediaItemPropertyArtwork,
+                                                                    itemAlbum, MPMediaItemPropertyAlbumTitle,
+                                                                    duration, MPMediaItemPropertyPlaybackDuration,
+                                                                    _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime,
+                                                                    [NSNumber numberWithFloat:_player.rate], MPNowPlayingInfoPropertyPlaybackRate, nil];
+         
+     }
+     @catch (NSException * e) {
+         NSLog(@"setPlaybackStatusInfo Exception: %@", e);
+     }
+     @finally {
+     }
 
 }
 
