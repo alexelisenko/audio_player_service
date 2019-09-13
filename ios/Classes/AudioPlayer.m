@@ -287,7 +287,8 @@
         
         if(itemInserted){
             
-            NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+            NSNumber* itemDefinedDuration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+            NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
         
             NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary new];
 
@@ -332,12 +333,20 @@
 
 - (long) audioLength {
     if (_player.currentItem != nil) {
-        NSNumber* duration = [[_items objectAtIndex:_itemIndex] objectForKey:@"duration"];
+        NSNumber* itemDefinedDuration = [[_items objectAtIndex:_itemIndex] objectForKey:@"duration"];
+        NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
+
         long millis = [duration intValue] * 1000;
         return millis;
     } else {
         return 0;
     }
+}
+
+- (NSNumber*) currentItemDuration {
+    CMTime duration = _player.currentItem.asset.duration;
+    float seconds = CMTimeGetSeconds(duration);
+    return @(seconds);
 }
 
 - (int) playbackPosition {
@@ -377,7 +386,8 @@
              }];
            }
 
-           NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+           NSNumber* itemDefinedDuration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+           NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
 
            NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary new];
 
