@@ -176,11 +176,13 @@
 
             //edit thumbs right away
             NSString* itemThumb = [item objectForKey:@"thumb"];
-            NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
-            NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
-            UIImage *artwork = [[UIImage alloc] initWithData:data];
-            [item setValue:[self resizeImageWithImage:artwork scaledToSize:CGSizeMake(600, 600)] forKey:@"thumb_image"];
             
+            if(itemThumb != (id)[NSNull null]) {
+                NSURL *thumbUrl = [[NSURL alloc] initWithString: itemThumb];
+                NSData *data = [NSData dataWithContentsOfURL: thumbUrl];
+                UIImage *artwork = [[UIImage alloc] initWithData:data];
+                [item setValue:[self resizeImageWithImage:artwork scaledToSize:CGSizeMake(600, 600)] forKey:@"thumb_image"];
+            }
         }
         if(_player == nil){
 
@@ -256,10 +258,15 @@
 
         NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
         NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+        NSString* itemThumb = [[_items objectAtIndex:itemIndex] objectForKey:@"thumb"];
+
+        MPMediaItemArtwork* ControlArtwork;
         
-        MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-            return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
-        }];
+        if(itemThumb != (id)[NSNull null]) {
+            ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+                return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+            }];
+        }
         
         NSLog(@"playing file: %@", [[_items objectAtIndex:itemIndex] objectForKey:@"url"]);
         
@@ -280,14 +287,21 @@
         
         if(itemInserted){
             
-            NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+            NSNumber* itemDefinedDuration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+            NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
         
-            [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                                                    itemTitle, MPMediaItemPropertyTitle,
-                                                                    ControlArtwork, MPMediaItemPropertyArtwork,
-                                                                    itemAlbum, MPMediaItemPropertyAlbumTitle,
-                                                                    duration, MPMediaItemPropertyPlaybackDuration,
-                                                                    [NSNumber numberWithDouble:1.0], MPNowPlayingInfoPropertyPlaybackRate, nil];
+            NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary new];
+
+            nowPlayingInfo[MPMediaItemPropertyTitle] = itemTitle;
+            nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = itemAlbum;
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration;
+            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = [NSNumber numberWithDouble:1.0];
+
+            if(ControlArtwork != nil) {
+                    nowPlayingInfo[MPMediaItemPropertyArtwork] = ControlArtwork;
+                }
+
+            [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nowPlayingInfo;
             
             [self sendPlatformDebugMessage:[NSString stringWithFormat:@"initPlayerItem itemInserted"]];
 
@@ -319,12 +333,20 @@
 
 - (long) audioLength {
     if (_player.currentItem != nil) {
-        NSNumber* duration = [[_items objectAtIndex:_itemIndex] objectForKey:@"duration"];
+        NSNumber* itemDefinedDuration = [[_items objectAtIndex:_itemIndex] objectForKey:@"duration"];
+        NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
+
         long millis = [duration intValue] * 1000;
         return millis;
     } else {
         return 0;
     }
+}
+
+- (NSNumber*) currentItemDuration {
+    CMTime duration = _player.currentItem.asset.duration;
+    float seconds = CMTimeGetSeconds(duration);
+    return @(seconds);
 }
 
 - (int) playbackPosition {
@@ -344,39 +366,49 @@
 # pragma mark player commands
 
 - (void) setPlaybackStatusInfo{
-    
-    // This was added to handle metadata being passed to external devices (bluetooth in car),
-    // but it causes a crash in latest tests, leaving here until further testing
 
-    // int itemIndex = (int) _itemIndex;
-    
-    // NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
+     int itemIndex = (int) _itemIndex;
 
-    // @try{
+     NSLog(@"setPlaybackStatusInfo item: %@", [_items objectAtIndex:itemIndex]);
 
-    //       NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
-    //       NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+     @try{
 
-    //       MPMediaItemArtwork* ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
-    //           return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
-    //       }];
 
-    //       NSNumber* duration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+           NSString* itemTitle = [[_items objectAtIndex:itemIndex] objectForKey:@"title"];
+           NSString* itemAlbum = [[_items objectAtIndex:itemIndex] objectForKey:@"album"];
+           NSString* itemThumb = [[_items objectAtIndex:itemIndex] objectForKey:@"thumb"];
 
-    //       [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-    //                                                                itemTitle, MPMediaItemPropertyTitle,
-    //                                                                ControlArtwork, MPMediaItemPropertyArtwork,
-    //                                                                itemAlbum, MPMediaItemPropertyAlbumTitle,
-    //                                                                duration, MPMediaItemPropertyPlaybackDuration,
-    //                                                                _playerPosition, MPNowPlayingInfoPropertyElapsedPlaybackTime,
-    //                                                                _player.rate, MPNowPlayingInfoPropertyPlaybackRate, nil];
-          
-    // }
-    // @catch (NSException * e) {
-    //     NSLog(@"setPlaybackStatusInfo Exception: %@", e);
-    // }
-    // @finally {
-    // }
+           MPMediaItemArtwork* ControlArtwork;
+
+           if(itemThumb != (id)[NSNull null]) {
+               ControlArtwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:CGSizeMake(600, 600) requestHandler:^UIImage * _Nonnull(CGSize size) {
+                 return [[_items objectAtIndex:itemIndex] objectForKey:@"thumb_image"];
+             }];
+           }
+
+           NSNumber* itemDefinedDuration = [[_items objectAtIndex:itemIndex] objectForKey:@"duration"];
+           NSNumber* duration = itemDefinedDuration != (id)[NSNull null] ? itemDefinedDuration : [self currentItemDuration];
+
+           NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary new];
+
+           nowPlayingInfo[MPMediaItemPropertyTitle] = itemTitle;
+           nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = itemAlbum;
+           nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration;
+           nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = [NSNumber numberWithFloat:_player.rate];
+           nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = _playerPosition;
+
+           if(ControlArtwork != nil) {
+               nowPlayingInfo[MPMediaItemPropertyArtwork] = ControlArtwork;
+           }
+
+           [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nowPlayingInfo;
+         
+     }
+     @catch (NSException * e) {
+         NSLog(@"setPlaybackStatusInfo Exception: %@", e);
+     }
+     @finally {
+     }
 
 }
 

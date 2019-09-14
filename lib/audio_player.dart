@@ -529,7 +529,7 @@ class AudioPlayerItem{
       'url': this.url,
       'thumb': this.thumbUrl,
       'title': this.title,
-      'duration': this.duration.inSeconds,
+      'duration': this.duration?.inSeconds,
       'album': this.album,
       'local': this.local
     };
