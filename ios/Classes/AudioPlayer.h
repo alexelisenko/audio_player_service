@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -17,12 +18,12 @@ NS_ASSUME_NONNULL_BEGIN
 + (id)sharedManager;
 
 - (void) initPlayerQueue: (NSArray*)items;
-- (void) playerPlayPause;
-- (void) playerStop;
-- (void) playerSeek: (NSNumber*) seconds;
+- (MPRemoteCommandHandlerStatus) playerPlayPause;
+- (MPRemoteCommandHandlerStatus) playerStop;
+- (MPRemoteCommandHandlerStatus) playerSeek: (NSNumber*) seconds;
 
-- (void) playerNext;
-- (void) playerPrevious;
+- (MPRemoteCommandHandlerStatus) playerNext;
+- (MPRemoteCommandHandlerStatus) playerPrevious;
 - (void) setPlayerIndex: (int) itemIndex;
 
 - (void) addListener:(id <AudioPlayerListener>) listener;
